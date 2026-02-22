@@ -34,14 +34,22 @@ export const getUsers = query({
         }
 
         let lastMessage = null;
+        let unreadCount = 0;
         if (conv) {
-          lastMessage = await ctx.db.query("messages")
+          const messages = await ctx.db.query("messages")
             .withIndex("by_conversationId", q => q.eq("conversationId", conv._id))
-            .order("desc")
-            .first();
+            .collect();
+            
+          if (messages.length > 0) {
+            lastMessage = messages[messages.length - 1];
+          }
+          
+          unreadCount = messages.filter(
+            msg => msg.senderId !== me && !msg.isRead
+          ).length;
         }
 
-        return { ...user, lastMessage };
+        return { ...user, lastMessage, unreadCount };
       })
     );
 

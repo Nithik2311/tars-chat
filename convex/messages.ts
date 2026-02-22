@@ -25,6 +25,25 @@ export const send = mutation({
       conversationId: args.conversationId,
       senderId: identity.subject,
       content: args.content,
+      isRead: false,
     });
+  }
+});
+
+export const markAsRead = mutation({
+  args: { conversationId: v.id("conversations") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const messages = await ctx.db.query("messages")
+      .withIndex("by_conversationId", q => q.eq("conversationId", args.conversationId))
+      .collect();
+
+    for (const msg of messages) {
+      if (msg.senderId !== identity.subject && !msg.isRead) {
+        await ctx.db.patch(msg._id, { isRead: true });
+      }
+    }
   }
 });

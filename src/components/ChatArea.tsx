@@ -44,6 +44,7 @@ export function ChatArea({
   );
   
   const sendMessage = useMutation(api.messages.send);
+  const markAsRead = useMutation(api.messages.markAsRead);
   const setTyping = useMutation(api.typing.setTyping);
   const typingIndicators = useQuery(
     api.typing.getTypingStatus,
@@ -57,6 +58,19 @@ export function ChatArea({
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages, isOtherUserTyping]);
+
+  // Mark messages as read when conversation is open and messages change
+  useEffect(() => {
+    if (conversationId && messages) {
+      const unreadMessages = messages.filter(
+        (msg) => msg.senderId !== currentUser?.id && !msg.isRead
+      );
+      
+      if (unreadMessages.length > 0) {
+        markAsRead({ conversationId });
+      }
+    }
+  }, [conversationId, messages, currentUser?.id, markAsRead]);
 
   // Handle typing indicator
   useEffect(() => {

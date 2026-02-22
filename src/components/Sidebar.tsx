@@ -74,9 +74,18 @@ export function Sidebar({
                   )}
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <h3 className="font-medium truncate">{user.name}</h3>
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium truncate">{user.name}</h3>
+                    {user.unreadCount > 0 && (
+                      <span className="bg-blue-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        {user.unreadCount}
+                      </span>
+                    )}
+                  </div>
                   {user.lastMessage ? (
-                    <p className="text-sm text-zinc-500 truncate">{user.lastMessage.content}</p>
+                    <p className={`text-sm truncate ${user.unreadCount > 0 ? "text-zinc-800 font-medium" : "text-zinc-500"}`}>
+                      {user.lastMessage.content}
+                    </p>
                   ) : (
                     <p className="text-sm text-zinc-400 italic truncate">Start a conversation</p>
                   )}

@@ -30,5 +30,6 @@ export default defineSchema({
     conversationId: v.id("conversations"),
     senderId: v.string(),
     content: v.string(),
+    isRead: v.optional(v.boolean()),
   }).index("by_conversationId", ["conversationId"]),
 });
