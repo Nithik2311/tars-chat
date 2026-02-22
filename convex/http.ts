@@ -42,6 +42,20 @@ http.route({
             clerkId: evt.data.id,
           });
           break;
+        case "session.created":
+          await ctx.runMutation(internal.users.updateStatus, {
+            clerkId: evt.data.user_id,
+            isOnline: true,
+          });
+          break;
+        case "session.ended":
+        case "session.removed":
+        case "session.revoked":
+          await ctx.runMutation(internal.users.updateStatus, {
+            clerkId: evt.data.user_id,
+            isOnline: false,
+          });
+          break;
       }
       return new Response("Success", { status: 200 });
     } catch (err) {

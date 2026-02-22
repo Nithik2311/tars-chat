@@ -82,13 +82,20 @@ export function ChatArea({
             <ArrowLeft className="h-5 w-5" />
           </Button>
         )}
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={otherUser.imageUrl} />
-          <AvatarFallback>{otherUser.name.charAt(0)}</AvatarFallback>
-        </Avatar>
+        <div className="relative">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={otherUser.imageUrl} />
+            <AvatarFallback>{otherUser.name.charAt(0)}</AvatarFallback>
+          </Avatar>
+          {otherUser.isOnline && (
+            <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+          )}
+        </div>
         <div>
           <h2 className="font-bold">{otherUser.name}</h2>
-          <p className="text-xs text-zinc-500">Click to view profile</p>
+          <p className="text-xs text-zinc-500">
+            {otherUser.isOnline ? "Online" : "Offline"}
+          </p>
         </div>
       </div>
 

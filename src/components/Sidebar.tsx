@@ -64,10 +64,15 @@ export function Sidebar({
                 onClick={() => handleUserClick(user)}
                 className="flex items-center gap-3 p-3 hover:bg-zinc-100 rounded-lg cursor-pointer transition-colors"
               >
-                <Avatar>
-                  <AvatarImage src={user.imageUrl} />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                </Avatar>
+                <div className="relative">
+                  <Avatar>
+                    <AvatarImage src={user.imageUrl} />
+                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  {user.isOnline && (
+                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+                  )}
+                </div>
                 <div className="flex-1 overflow-hidden">
                   <h3 className="font-medium truncate">{user.name}</h3>
                   {user.lastMessage ? (
