@@ -6,7 +6,7 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Send, ArrowLeft } from "lucide-react";
+import { Send, ArrowLeft, ArrowDown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { useUser } from "@clerk/nextjs";
@@ -36,7 +36,9 @@ export function ChatArea({
 }) {
   const { user: currentUser } = useUser();
   const [newMessage, setNewMessage] = useState("");
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const prevMessageCount = useRef(0);
   
   const messages = useQuery(
     api.messages.list, 
@@ -53,11 +55,47 @@ export function ChatArea({
 
   const isOtherUserTyping = typingIndicators && typingIndicators.length > 0;
 
+  // Smart Auto-Scroll
   useEffect(() => {
-    if (scrollRef.current) {
+    if (!scrollRef.current) return;
+
+    const scrollContainer = scrollRef.current.closest('[data-radix-scroll-area-viewport]');
+    if (!scrollContainer) return;
+
+    const isAtBottom = 
+      scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100;
+
+    if (messages && messages.length > prevMessageCount.current) {
+      // New message arrived
+      if (isAtBottom || messages.length === 1) {
+        scrollRef.current.scrollIntoView({ behavior: "smooth" });
+      } else {
+        setShowScrollButton(true);
+      }
+    } else if (isAtBottom) {
+      // If typing indicator appears and we are at bottom, scroll down
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
+
+    prevMessageCount.current = messages?.length || 0;
   }, [messages, isOtherUserTyping]);
+
+  // Track scroll position to hide button when user manually scrolls to bottom
+  useEffect(() => {
+    const scrollContainer = scrollRef.current?.closest('[data-radix-scroll-area-viewport]');
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const isAtBottom = 
+        scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100;
+      if (isAtBottom) {
+        setShowScrollButton(false);
+      }
+    };
+
+    scrollContainer.addEventListener("scroll", handleScroll);
+    return () => scrollContainer.removeEventListener("scroll", handleScroll);
+  }, []);
 
   // Mark messages as read when conversation is open and messages change
   useEffect(() => {
@@ -96,6 +134,14 @@ export function ChatArea({
 
     const content = newMessage.trim();
     setNewMessage(""); // Optimistic clear
+    
+    // Force scroll to bottom when sending a message
+    setTimeout(() => {
+      if (scrollRef.current) {
+        scrollRef.current.scrollIntoView({ behavior: "smooth" });
+      }
+    }, 100);
+
     await setTyping({ conversationId, isTyping: false });
     await sendMessage({ conversationId, content });
   };
@@ -114,7 +160,7 @@ export function ChatArea({
   }
 
   return (
-    <div className={`flex-1 h-full flex-col bg-white ${className || "flex"}`}>
+    <div className={`flex-1 h-full flex-col bg-white relative ${className || "flex"}`}>
       {/* Header */}
       <div className="p-4 border-b flex items-center gap-3 bg-white h-[73px]">
         {onBack && (
@@ -204,6 +250,24 @@ export function ChatArea({
           {(messages && messages.length > 0 || isOtherUserTyping) && <div ref={scrollRef} />}
         </div>
       </ScrollArea>
+
+      {/* Scroll to bottom button */}
+      {showScrollButton && (
+        <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-10">
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            className="rounded-full shadow-md border bg-white text-blue-600 hover:bg-zinc-50 flex items-center gap-1"
+            onClick={() => {
+              scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+              setShowScrollButton(false);
+            }}
+          >
+            <ArrowDown className="h-4 w-4" />
+            New messages
+          </Button>
+        </div>
+      )}
 
       {/* Input Area */}
       <div className="p-4 border-t bg-white">
