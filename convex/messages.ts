@@ -11,7 +11,7 @@ export const list = query({
       .withIndex("by_conversationId", q => q.eq("conversationId", args.conversationId))
       .collect();
       
-    return messages;
+    return messages.filter(msg => !msg.deletedBy?.includes(identity.subject));
   }
 });
 
@@ -43,6 +43,34 @@ export const markAsRead = mutation({
     for (const msg of messages) {
       if (msg.senderId !== identity.subject && !msg.isRead) {
         await ctx.db.patch(msg._id, { isRead: true });
+      }
+    }
+  }
+});
+
+export const deleteMessage = mutation({
+  args: { 
+    messageId: v.id("messages"),
+    type: v.union(v.literal("for_me"), v.literal("for_everyone"))
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error("Unauthorized");
+
+    const message = await ctx.db.get(args.messageId);
+    if (!message) throw new Error("Message not found");
+    
+    if (args.type === "for_everyone") {
+      if (message.senderId !== identity.subject) {
+        throw new Error("Unauthorized to delete this message for everyone");
+      }
+      await ctx.db.patch(args.messageId, { isDeleted: true });
+    } else if (args.type === "for_me") {
+      const deletedBy = message.deletedBy || [];
+      if (!deletedBy.includes(identity.subject)) {
+        await ctx.db.patch(args.messageId, { 
+          deletedBy: [...deletedBy, identity.subject] 
+        });
       }
     }
   }

@@ -31,5 +31,7 @@ export default defineSchema({
     senderId: v.string(),
     content: v.string(),
     isRead: v.optional(v.boolean()),
+    isDeleted: v.optional(v.boolean()),
+    deletedBy: v.optional(v.array(v.string())),
   }).index("by_conversationId", ["conversationId"]),
 });

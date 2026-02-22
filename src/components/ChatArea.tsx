@@ -6,9 +6,15 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Send, ArrowLeft, ArrowDown } from "lucide-react";
+import { Send, ArrowLeft, ArrowDown, Trash2, Trash, MoreVertical } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "./ui/dropdown-menu";
 import { useUser } from "@clerk/nextjs";
 import { format, isToday, isSameYear } from "date-fns";
 
@@ -47,6 +53,7 @@ export function ChatArea({
   
   const sendMessage = useMutation(api.messages.send);
   const markAsRead = useMutation(api.messages.markAsRead);
+  const deleteMessage = useMutation(api.messages.deleteMessage);
   const setTyping = useMutation(api.typing.setTyping);
   const typingIndicators = useQuery(
     api.typing.getTypingStatus,
@@ -215,16 +222,55 @@ export function ChatArea({
               {messages.map((msg) => {
               const isMe = msg.senderId === currentUser?.id;
               return (
-                <div key={msg._id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                <div key={msg._id} className={`flex ${isMe ? "justify-end" : "justify-start"} group`}>
                   <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[70%]`}>
-                    <div 
-                      className={`rounded-2xl px-4 py-2 ${
-                        isMe 
-                          ? "bg-blue-600 text-white rounded-br-sm" 
-                          : "bg-white border text-zinc-900 rounded-bl-sm"
-                      }`}
-                    >
-                      <p>{msg.content}</p>
+                    <div className={`flex items-center gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                        {isMe && !msg.isDeleted ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-1 text-zinc-400 hover:text-zinc-600">
+                                <MoreVertical className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align={isMe ? "end" : "start"}>
+                              <DropdownMenuItem 
+                                className="text-red-600 cursor-pointer"
+                                onClick={() => deleteMessage({ messageId: msg._id, type: "for_me" })}
+                              >
+                                <Trash className="h-4 w-4 mr-2" />
+                                Delete for me
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                className="text-red-600 cursor-pointer"
+                                onClick={() => deleteMessage({ messageId: msg._id, type: "for_everyone" })}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete for everyone
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
+                          <button 
+                            onClick={() => deleteMessage({ messageId: msg._id, type: "for_me" })}
+                            className="p-1 text-zinc-400 hover:text-red-500"
+                            title="Delete for me"
+                          >
+                            <Trash className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                      <div 
+                        className={`rounded-2xl px-4 py-2 ${
+                          msg.isDeleted 
+                            ? "bg-zinc-100 border text-zinc-500 italic rounded-bl-sm"
+                            : isMe 
+                              ? "bg-blue-600 text-white rounded-br-sm" 
+                              : "bg-white border text-zinc-900 rounded-bl-sm"
+                        }`}
+                      >
+                        <p>{msg.isDeleted ? "This message was deleted" : msg.content}</p>
+                      </div>
                     </div>
                     <span className="text-[10px] text-zinc-400 mt-1 px-1">
                       {formatMessageTime(msg._creationTime)}
