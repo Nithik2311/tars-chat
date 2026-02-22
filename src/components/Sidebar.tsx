@@ -10,7 +10,13 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { Id } from "../../convex/_generated/dataModel";
 
-export function Sidebar({ onSelectChat }: { onSelectChat: (convId: Id<"conversations">, user: any) => void }) {
+export function Sidebar({ 
+  onSelectChat,
+  className
+}: { 
+  onSelectChat: (convId: Id<"conversations">, user: any) => void;
+  className?: string;
+}) {
   const users = useQuery(api.users.getUsers);
   const getOrCreateConversation = useMutation(api.conversations.getOrCreate);
   const [searchQuery, setSearchQuery] = useState("");
@@ -25,7 +31,7 @@ export function Sidebar({ onSelectChat }: { onSelectChat: (convId: Id<"conversat
   };
 
   return (
-    <div className="w-full md:w-80 h-full border-r bg-zinc-50 flex flex-col">
+    <div className={`w-full md:w-80 h-full border-r bg-zinc-50 flex-col ${className || "flex"}`}>
       <div className="p-4 border-b flex items-center justify-between bg-white">
         <h2 className="text-xl font-bold">Chats</h2>
         <UserButton />

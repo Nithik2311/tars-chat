@@ -12,14 +12,20 @@ export default function Home() {
   return (
     <main className="flex h-screen w-full overflow-hidden">
       <Sidebar 
+        className={selectedConversationId ? "hidden md:flex" : "flex"}
         onSelectChat={(convId, user) => {
           setSelectedConversationId(convId);
           setSelectedUser(user);
         }} 
       />
       <ChatArea 
+        className={selectedConversationId ? "flex" : "hidden md:flex"}
         conversationId={selectedConversationId} 
         otherUser={selectedUser} 
+        onBack={() => {
+          setSelectedConversationId(null);
+          setSelectedUser(null);
+        }}
       />
     </main>
   );

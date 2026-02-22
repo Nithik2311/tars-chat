@@ -6,7 +6,7 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Send } from "lucide-react";
+import { Send, ArrowLeft } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { useUser } from "@clerk/nextjs";
@@ -25,10 +25,14 @@ function formatMessageTime(date: number) {
 
 export function ChatArea({ 
   conversationId, 
-  otherUser 
+  otherUser,
+  className,
+  onBack
 }: { 
   conversationId: Id<"conversations"> | null;
   otherUser: any | null;
+  className?: string;
+  onBack?: () => void;
 }) {
   const { user: currentUser } = useUser();
   const [newMessage, setNewMessage] = useState("");
@@ -58,7 +62,7 @@ export function ChatArea({
 
   if (!conversationId || !otherUser) {
     return (
-      <div className="flex-1 h-full flex flex-col bg-white hidden md:flex">
+      <div className={`flex-1 h-full flex-col bg-white ${className || "hidden md:flex"}`}>
         <div className="p-4 border-b flex items-center bg-white h-[73px]">
           <h2 className="text-xl font-bold text-zinc-300">Select a chat</h2>
         </div>
@@ -70,9 +74,14 @@ export function ChatArea({
   }
 
   return (
-    <div className="flex-1 h-full flex flex-col bg-white">
+    <div className={`flex-1 h-full flex-col bg-white ${className || "flex"}`}>
       {/* Header */}
       <div className="p-4 border-b flex items-center gap-3 bg-white h-[73px]">
+        {onBack && (
+          <Button variant="ghost" size="icon" className="md:hidden mr-1" onClick={onBack}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        )}
         <Avatar className="h-10 w-10">
           <AvatarImage src={otherUser.imageUrl} />
           <AvatarFallback>{otherUser.name.charAt(0)}</AvatarFallback>
