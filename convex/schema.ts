@@ -10,4 +10,17 @@ export default defineSchema({
     isOnline: v.boolean(),
     lastSeen: v.number(),
   }).index("by_clerkId", ["clerkId"]),
+
+  conversations: defineTable({
+    participantOne: v.string(),
+    participantTwo: v.string(),
+  }).index("by_participants", ["participantOne", "participantTwo"])
+    .index("by_participantOne", ["participantOne"])
+    .index("by_participantTwo", ["participantTwo"]),
+
+  messages: defineTable({
+    conversationId: v.id("conversations"),
+    senderId: v.string(),
+    content: v.string(),
+  }).index("by_conversationId", ["conversationId"]),
 });

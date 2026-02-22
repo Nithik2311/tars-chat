@@ -9,10 +9,36 @@ export const getUsers = query({
       throw new Error("Unauthorized");
     }
 
+    const me = identity.subject;
     const users = await ctx.db.query("users").collect();
-    
-    // Filter out the current user
-    return users.filter((user) => user.clerkId !== identity.subject);
+    const otherUsers = users.filter((user) => user.clerkId !== me);
+
+    // Fetch the last message for each user to display in the sidebar
+    const usersWithMessages = await Promise.all(
+      otherUsers.map(async (user) => {
+        let conv = await ctx.db.query("conversations")
+          .withIndex("by_participants", q => q.eq("participantOne", me).eq("participantTwo", user.clerkId))
+          .unique();
+
+        if (!conv) {
+          conv = await ctx.db.query("conversations")
+            .withIndex("by_participants", q => q.eq("participantOne", user.clerkId).eq("participantTwo", me))
+            .unique();
+        }
+
+        let lastMessage = null;
+        if (conv) {
+          lastMessage = await ctx.db.query("messages")
+            .withIndex("by_conversationId", q => q.eq("conversationId", conv._id))
+            .order("desc")
+            .first();
+        }
+
+        return { ...user, lastMessage };
+      })
+    );
+
+    return usersWithMessages;
   },
 });
 
