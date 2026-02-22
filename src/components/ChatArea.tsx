@@ -6,7 +6,7 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Send, ArrowLeft, ArrowDown, Trash2, Trash, MoreVertical } from "lucide-react";
+import { Send, ArrowLeft, ArrowDown, Trash2, Trash, MoreVertical, SmilePlus } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import {
@@ -54,6 +54,7 @@ export function ChatArea({
   const sendMessage = useMutation(api.messages.send);
   const markAsRead = useMutation(api.messages.markAsRead);
   const deleteMessage = useMutation(api.messages.deleteMessage);
+  const toggleReaction = useMutation(api.messages.toggleReaction);
   const setTyping = useMutation(api.typing.setTyping);
   const typingIndicators = useQuery(
     api.typing.getTypingStatus,
@@ -226,6 +227,26 @@ export function ChatArea({
                   <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[70%]`}>
                     <div className={`flex items-center gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                        {!msg.isDeleted && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button className="p-1 text-zinc-400 hover:text-zinc-600" title="React">
+                                <SmilePlus className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align={isMe ? "end" : "start"} className="flex flex-row gap-1 p-2 min-w-0">
+                              {["👍", "❤️", "😂", "😮", "😢", "🙏"].map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  onClick={() => toggleReaction({ messageId: msg._id, emoji })}
+                                  className="hover:bg-zinc-100 p-1 rounded text-lg transition-colors"
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                         {isMe && !msg.isDeleted ? (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -272,6 +293,30 @@ export function ChatArea({
                         <p>{msg.isDeleted ? "This message was deleted" : msg.content}</p>
                       </div>
                     </div>
+                    
+                    {/* Reactions Display */}
+                    {msg.reactions && msg.reactions.length > 0 && (
+                      <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? "justify-end" : "justify-start"}`}>
+                        {msg.reactions.map((reaction) => {
+                          const hasReacted = currentUser && reaction.users.includes(currentUser.id);
+                          return (
+                            <button
+                              key={reaction.emoji}
+                              onClick={() => toggleReaction({ messageId: msg._id, emoji: reaction.emoji })}
+                              className={`text-xs px-1.5 py-0.5 rounded-full border flex items-center gap-1 transition-colors ${
+                                hasReacted 
+                                  ? "bg-blue-50 border-blue-200 text-blue-600" 
+                                  : "bg-white border-zinc-200 text-zinc-600 hover:bg-zinc-50"
+                              }`}
+                            >
+                              <span>{reaction.emoji}</span>
+                              <span className="font-medium">{reaction.users.length}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     <span className="text-[10px] text-zinc-400 mt-1 px-1">
                       {formatMessageTime(msg._creationTime)}
                     </span>
