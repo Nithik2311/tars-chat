@@ -44,12 +44,37 @@ export function ChatArea({
   );
   
   const sendMessage = useMutation(api.messages.send);
+  const setTyping = useMutation(api.typing.setTyping);
+  const typingIndicators = useQuery(
+    api.typing.getTypingStatus,
+    conversationId ? { conversationId } : "skip"
+  );
+
+  const isOtherUserTyping = typingIndicators && typingIndicators.length > 0;
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages]);
+  }, [messages, isOtherUserTyping]);
+
+  // Handle typing indicator
+  useEffect(() => {
+    if (!conversationId) return;
+
+    if (newMessage.trim().length > 0) {
+      setTyping({ conversationId, isTyping: true });
+    } else {
+      setTyping({ conversationId, isTyping: false });
+    }
+
+    // Set a timeout to clear typing status if user stops typing but doesn't clear input
+    const timeoutId = setTimeout(() => {
+      setTyping({ conversationId, isTyping: false });
+    }, 3000);
+
+    return () => clearTimeout(timeoutId);
+  }, [newMessage, conversationId, setTyping]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +82,7 @@ export function ChatArea({
 
     const content = newMessage.trim();
     setNewMessage(""); // Optimistic clear
+    await setTyping({ conversationId, isTyping: false });
     await sendMessage({ conversationId, content });
   };
 
@@ -94,7 +120,11 @@ export function ChatArea({
         <div>
           <h2 className="font-bold">{otherUser.name}</h2>
           <p className="text-xs text-zinc-500">
-            {otherUser.isOnline ? "Online" : "Offline"}
+            {isOtherUserTyping ? (
+              <span className="text-blue-500 font-medium">typing...</span>
+            ) : (
+              otherUser.isOnline ? "Online" : "Offline"
+            )}
           </p>
         </div>
       </div>
@@ -145,7 +175,19 @@ export function ChatArea({
             })}
             </>
           )}
-          {messages && messages.length > 0 && <div ref={scrollRef} />}
+          
+          {/* Typing Indicator */}
+          {isOtherUserTyping && (
+            <div className="flex justify-start">
+              <div className="bg-white border text-zinc-500 rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1">
+                <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                <div className="w-1.5 h-1.5 bg-zinc-400 rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+              </div>
+            </div>
+          )}
+
+          {(messages && messages.length > 0 || isOtherUserTyping) && <div ref={scrollRef} />}
         </div>
       </ScrollArea>
 

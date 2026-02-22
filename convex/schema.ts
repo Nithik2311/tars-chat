@@ -18,6 +18,14 @@ export default defineSchema({
     .index("by_participantOne", ["participantOne"])
     .index("by_participantTwo", ["participantTwo"]),
 
+  typingIndicators: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.string(),
+    isTyping: v.boolean(),
+    updatedAt: v.number(),
+  }).index("by_conversationId", ["conversationId"])
+    .index("by_conversation_and_user", ["conversationId", "userId"]),
+
   messages: defineTable({
     conversationId: v.id("conversations"),
     senderId: v.string(),
