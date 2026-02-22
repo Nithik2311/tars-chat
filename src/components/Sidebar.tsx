@@ -1,16 +1,68 @@
+"use client";
+
 import { UserButton } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import { useState } from "react";
+import { Input } from "./ui/input";
+import { Search } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+import { ScrollArea } from "./ui/scroll-area";
 
 export function Sidebar() {
+  const users = useQuery(api.users.getUsers);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredUsers = users?.filter((user) =>
+    user.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="w-full md:w-80 h-full border-r bg-zinc-50 flex flex-col">
       <div className="p-4 border-b flex items-center justify-between bg-white">
         <h2 className="text-xl font-bold">Chats</h2>
         <UserButton />
       </div>
-      <div className="flex-1 overflow-y-auto p-4">
-        {/* User list will go here in the next step */}
-        <p className="text-sm text-zinc-500 text-center mt-4">No conversations yet.</p>
+
+      <div className="p-4 border-b bg-white">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-500" />
+          <Input
+            placeholder="Search users..."
+            className="pl-9 bg-zinc-50 border-none"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
       </div>
+
+      <ScrollArea className="flex-1">
+        <div className="p-2">
+          {users === undefined ? (
+            <p className="text-sm text-zinc-500 text-center mt-4">Loading users...</p>
+          ) : filteredUsers?.length === 0 ? (
+            <p className="text-sm text-zinc-500 text-center mt-4">
+              {searchQuery ? "No users found." : "No other users registered yet."}
+            </p>
+          ) : (
+            filteredUsers?.map((user) => (
+              <div
+                key={user._id}
+                className="flex items-center gap-3 p-3 hover:bg-zinc-100 rounded-lg cursor-pointer transition-colors"
+              >
+                <Avatar>
+                  <AvatarImage src={user.imageUrl} />
+                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 overflow-hidden">
+                  <h3 className="font-medium truncate">{user.name}</h3>
+                  <p className="text-sm text-zinc-500 truncate">{user.email}</p>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </ScrollArea>
     </div>
   );
 }

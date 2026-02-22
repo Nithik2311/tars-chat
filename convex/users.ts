@@ -1,5 +1,20 @@
-import { internalMutation } from "./_generated/server";
+import { internalMutation, query } from "./_generated/server";
 import { v } from "convex/values";
+
+export const getUsers = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Unauthorized");
+    }
+
+    const users = await ctx.db.query("users").collect();
+    
+    // Filter out the current user
+    return users.filter((user) => user.clerkId !== identity.subject);
+  },
+});
 
 export const createUser = internalMutation({
   args: {
