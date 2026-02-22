@@ -10,6 +10,18 @@ import { Send } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { useUser } from "@clerk/nextjs";
+import { format, isToday, isSameYear } from "date-fns";
+
+function formatMessageTime(date: number) {
+  const d = new Date(date);
+  if (isToday(d)) {
+    return format(d, "h:mm a"); // 2:34 PM
+  }
+  if (isSameYear(d, new Date())) {
+    return format(d, "MMM d, h:mm a"); // Feb 15, 2:34 PM
+  }
+  return format(d, "MMM d, yyyy, h:mm a"); // Feb 15, 2025, 2:34 PM
+}
 
 export function ChatArea({ 
   conversationId, 
@@ -72,25 +84,52 @@ export function ChatArea({
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="flex-1 p-4 bg-zinc-50">
-        <div className="flex flex-col gap-4 pb-4">
-          {messages?.map((msg) => {
-            const isMe = msg.senderId === currentUser?.id;
-            return (
-              <div key={msg._id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
-                <div 
-                  className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                    isMe 
-                      ? "bg-blue-600 text-white rounded-br-sm" 
-                      : "bg-white border text-zinc-900 rounded-bl-sm"
-                  }`}
-                >
-                  <p>{msg.content}</p>
-                </div>
+      <ScrollArea className="flex-1 bg-zinc-50 min-h-0">
+        <div className="flex flex-col gap-4 p-4 min-h-full">
+          {messages === undefined ? (
+            <div className="flex-1 flex items-center justify-center h-full">
+              <p className="text-zinc-500">Loading messages...</p>
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex-1 flex flex-col items-center justify-center h-full mt-20">
+              <div className="bg-white p-6 rounded-full shadow-sm border mb-4">
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={otherUser.imageUrl} />
+                  <AvatarFallback className="text-2xl">{otherUser.name.charAt(0)}</AvatarFallback>
+                </Avatar>
               </div>
-            );
-          })}
-          <div ref={scrollRef} />
+              <h3 className="text-xl font-semibold text-zinc-800">Say hi to {otherUser.name}!</h3>
+              <p className="text-zinc-500 mt-2 text-center max-w-sm">
+                This is the beginning of your conversation. Send a message to start chatting.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="flex-1" /> {/* Spacer to push messages to bottom if few */}
+              {messages.map((msg) => {
+              const isMe = msg.senderId === currentUser?.id;
+              return (
+                <div key={msg._id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                  <div className={`flex flex-col ${isMe ? "items-end" : "items-start"} max-w-[70%]`}>
+                    <div 
+                      className={`rounded-2xl px-4 py-2 ${
+                        isMe 
+                          ? "bg-blue-600 text-white rounded-br-sm" 
+                          : "bg-white border text-zinc-900 rounded-bl-sm"
+                      }`}
+                    >
+                      <p>{msg.content}</p>
+                    </div>
+                    <span className="text-[10px] text-zinc-400 mt-1 px-1">
+                      {formatMessageTime(msg._creationTime)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+            </>
+          )}
+          {messages && messages.length > 0 && <div ref={scrollRef} />}
         </div>
       </ScrollArea>
 
