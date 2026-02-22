@@ -6,7 +6,7 @@ import { Id } from "../../convex/_generated/dataModel";
 import { useState, useEffect, useRef } from "react";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
-import { Send, ArrowLeft, ArrowDown, Trash2, Trash, MoreVertical, SmilePlus } from "lucide-react";
+import { Send, ArrowLeft, ArrowDown, Trash2, Trash, MoreVertical, SmilePlus, Loader2, AlertCircle } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import {
@@ -43,6 +43,8 @@ export function ChatArea({
   const { user: currentUser } = useUser();
   const [newMessage, setNewMessage] = useState("");
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMessageCount = useRef(0);
   
@@ -141,8 +143,10 @@ export function ChatArea({
     if (!newMessage.trim() || !conversationId) return;
 
     const content = newMessage.trim();
+    setIsSending(true);
+    setError(null);
     setNewMessage(""); // Optimistic clear
-    
+
     // Force scroll to bottom when sending a message
     setTimeout(() => {
       if (scrollRef.current) {
@@ -150,8 +154,14 @@ export function ChatArea({
       }
     }, 100);
 
-    await setTyping({ conversationId, isTyping: false });
-    await sendMessage({ conversationId, content });
+    try {
+      await setTyping({ conversationId, isTyping: false });
+      await sendMessage({ conversationId, content });
+    } catch (err: any) {
+      setError(err?.message || "Failed to send message.");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   if (!conversationId || !otherUser) {
@@ -201,8 +211,9 @@ export function ChatArea({
       <ScrollArea className="flex-1 bg-zinc-50 min-h-0">
         <div className="flex flex-col gap-4 p-4 min-h-full">
           {messages === undefined ? (
-            <div className="flex-1 flex items-center justify-center h-full">
-              <p className="text-zinc-500">Loading messages...</p>
+            <div className="flex-1 flex flex-col items-center justify-center h-full gap-3 text-zinc-500">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+              <p>Loading messages...</p>
             </div>
           ) : messages.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center h-full mt-20">
@@ -362,15 +373,23 @@ export function ChatArea({
 
       {/* Input Area */}
       <div className="p-4 border-t bg-white">
+        {error && (
+          <div className="mb-2 flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
+            <AlertCircle className="h-4 w-4" />
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="ml-auto text-xs text-red-500 underline">Dismiss</button>
+          </div>
+        )}
         <form onSubmit={handleSend} className="flex gap-2">
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             placeholder="Type a message..."
             className="flex-1"
+            disabled={isSending}
           />
-          <Button type="submit" size="icon" disabled={!newMessage.trim()}>
-            <Send className="h-4 w-4" />
+          <Button type="submit" size="icon" disabled={!newMessage.trim() || isSending}>
+            {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
       </div>

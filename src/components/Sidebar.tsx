@@ -5,7 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { useState } from "react";
 import { Input } from "./ui/input";
-import { Search } from "lucide-react";
+import { Search, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { Id } from "../../convex/_generated/dataModel";
@@ -52,11 +52,16 @@ export function Sidebar({
       <ScrollArea className="flex-1">
         <div className="p-2">
           {users === undefined ? (
-            <p className="text-sm text-zinc-500 text-center mt-4">Loading users...</p>
+            <div className="flex flex-col items-center justify-center h-40 gap-2 text-zinc-500">
+              <Loader2 className="h-6 w-6 animate-spin text-blue-500" />
+              <p className="text-sm">Loading users...</p>
+            </div>
           ) : filteredUsers?.length === 0 ? (
-            <p className="text-sm text-zinc-500 text-center mt-4">
-              {searchQuery ? "No users found." : "No other users registered yet."}
-            </p>
+            <div className="flex flex-col items-center justify-center h-40 gap-2 text-zinc-500">
+              <p className="text-sm">
+                {searchQuery ? "No users found." : "No other users registered yet."}
+              </p>
+            </div>
           ) : (
             filteredUsers?.map((user) => (
               <div
