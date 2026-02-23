@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// --- STEP 2: Database Schema Design (Convex) ---
 export default defineSchema({
   users: defineTable({
     clerkId: v.string(),
@@ -12,11 +13,16 @@ export default defineSchema({
   }).index("by_clerkId", ["clerkId"]),
 
   conversations: defineTable({
-    participantOne: v.string(),
-    participantTwo: v.string(),
-  }).index("by_participants", ["participantOne", "participantTwo"])
+    groupName: v.optional(v.string()),
+    participants: v.optional(v.array(v.string())), // array of Clerk IDs, now optional
+    isGroup: v.optional(v.boolean()),
+    participantOne: v.optional(v.string()),
+    participantTwo: v.optional(v.string()),
+  })
+    .index("by_participants", ["participantOne", "participantTwo"])
     .index("by_participantOne", ["participantOne"])
-    .index("by_participantTwo", ["participantTwo"]),
+    .index("by_participantTwo", ["participantTwo"])
+    .index("by_group", ["isGroup"]),
 
   typingIndicators: defineTable({
     conversationId: v.id("conversations"),
@@ -43,3 +49,4 @@ export default defineSchema({
     ),
   }).index("by_conversationId", ["conversationId"]),
 });
+// --- END STEP 2 ---

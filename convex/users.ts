@@ -1,6 +1,7 @@
 import { internalMutation, mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+// --- STEP 4: Sidebar & User List UI (Backend Query) ---
 export const getUsers = query({
   args: {},
   handler: async (ctx) => {
@@ -39,13 +40,23 @@ export const getUsers = query({
           const messages = await ctx.db.query("messages")
             .withIndex("by_conversationId", q => q.eq("conversationId", conv._id))
             .collect();
-            
-          if (messages.length > 0) {
-            lastMessage = messages[messages.length - 1];
+
+          // Hide messages this user deleted "for me" in sidebar previews
+          const visibleMessages = messages.filter(
+            (msg) => !msg.deletedBy?.includes(me)
+          );
+
+          if (visibleMessages.length > 0) {
+            const rawLast = visibleMessages[visibleMessages.length - 1];
+            // If the last visible message was deleted for everyone,
+            // normalize content so the sidebar doesn't show the old text.
+            lastMessage = rawLast.isDeleted
+              ? { ...rawLast, content: "This message was deleted" }
+              : rawLast;
           }
-          
-          unreadCount = messages.filter(
-            msg => msg.senderId !== me && !msg.isRead
+
+          unreadCount = visibleMessages.filter(
+            (msg) => msg.senderId !== me && !msg.isRead
           ).length;
         }
 
@@ -56,7 +67,9 @@ export const getUsers = query({
     return usersWithMessages;
   },
 });
+// --- END STEP 4 ---
 
+// --- STEP 3: User Syncing & Online Status ---
 export const updateStatus = internalMutation({
   args: {
     clerkId: v.string(),
@@ -100,6 +113,7 @@ export const updateOnlineStatus = mutation({
     }
   },
 });
+// --- END STEP 3 ---
 
 export const createUser = internalMutation({
   args: {

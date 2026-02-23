@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
 import { ScrollArea } from "./ui/scroll-area";
 import { Id } from "../../convex/_generated/dataModel";
 
+// --- STEP 4: Sidebar & User List UI ---
 export function Sidebar({ 
   onSelectChat,
   className
@@ -103,3 +104,4 @@ export function Sidebar({
     </div>
   );
 }
+// --- END STEP 4 ---

@@ -29,6 +29,7 @@ function formatMessageTime(date: number) {
   return format(d, "MMM d, yyyy, h:mm a"); // Feb 15, 2025, 2:34 PM
 }
 
+// --- STEP 6: Chat Area Layout & State ---
 export function ChatArea({ 
   conversationId, 
   otherUser,
@@ -43,28 +44,47 @@ export function ChatArea({
   const { user: currentUser } = useUser();
   const [newMessage, setNewMessage] = useState("");
   const [showScrollButton, setShowScrollButton] = useState(false);
+  
+  // --- STEP 12: Loading & Error States (Optimistic UI) ---
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unsentMessage, setUnsentMessage] = useState<string | null>(null);
+  // --- END STEP 12 ---
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const prevMessageCount = useRef(0);
+  const lastConversationId = useRef<Id<"conversations"> | null>(null);
   
+  // --- STEP 7: Sending & Fetching Messages ---
   const messages = useQuery(
     api.messages.list, 
     conversationId ? { conversationId } : "skip"
   );
-  
   const sendMessage = useMutation(api.messages.send);
+  // --- END STEP 7 ---
+
+  // --- STEP 9: Read Receipts ---
   const markAsRead = useMutation(api.messages.markAsRead);
+  // --- END STEP 9 ---
+
+  // --- STEP 11: Message Deletion (Soft Delete) ---
   const deleteMessage = useMutation(api.messages.deleteMessage);
+  // --- END STEP 11 ---
+
+  // --- STEP 13: Message Reactions ---
   const toggleReaction = useMutation(api.messages.toggleReaction);
+  // --- END STEP 13 ---
+
+  // --- STEP 8: Typing Indicators ---
   const setTyping = useMutation(api.typing.setTyping);
   const typingIndicators = useQuery(
     api.typing.getTypingStatus,
     conversationId ? { conversationId } : "skip"
   );
-
   const isOtherUserTyping = typingIndicators && typingIndicators.length > 0;
+  // --- END STEP 8 ---
 
+  // --- STEP 10: Auto-Scrolling & New Message Alerts ---
   // Smart Auto-Scroll
   useEffect(() => {
     if (!scrollRef.current) return;
@@ -72,14 +92,34 @@ export function ChatArea({
     const scrollContainer = scrollRef.current.closest('[data-radix-scroll-area-viewport]');
     if (!scrollContainer) return;
 
-    const isAtBottom = 
+    const isAtBottom =
       scrollContainer.scrollHeight - scrollContainer.scrollTop - scrollContainer.clientHeight < 100;
 
+    const conversationChanged = conversationId !== lastConversationId.current;
+
+    // When switching conversations, always jump to the latest message
+    if (conversationChanged) {
+      if (messages && messages.length > 0) {
+        scrollRef.current.scrollIntoView({ behavior: "auto" });
+      }
+      lastConversationId.current = conversationId ?? null;
+      prevMessageCount.current = messages?.length || 0;
+      setShowScrollButton(false);
+      return;
+    }
+
     if (messages && messages.length > prevMessageCount.current) {
-      // New message arrived
+      // New messages arrived
+      const newMessages = messages.slice(prevMessageCount.current);
+      const hasNewFromOther = newMessages.some(
+        (m) => m.senderId !== currentUser?.id
+      );
+
       if (isAtBottom || messages.length === 1) {
+        // User is at bottom: keep them pinned there
         scrollRef.current.scrollIntoView({ behavior: "smooth" });
-      } else {
+      } else if (hasNewFromOther) {
+        // User is reading older messages and a new incoming message arrived
         setShowScrollButton(true);
       }
     } else if (isAtBottom) {
@@ -88,7 +128,7 @@ export function ChatArea({
     }
 
     prevMessageCount.current = messages?.length || 0;
-  }, [messages, isOtherUserTyping]);
+  }, [messages, isOtherUserTyping, conversationId, currentUser?.id]);
 
   // Track scroll position to hide button when user manually scrolls to bottom
   useEffect(() => {
@@ -106,6 +146,7 @@ export function ChatArea({
     scrollContainer.addEventListener("scroll", handleScroll);
     return () => scrollContainer.removeEventListener("scroll", handleScroll);
   }, []);
+  // --- END STEP 10 ---
 
   // Mark messages as read when conversation is open and messages change
   useEffect(() => {
@@ -138,14 +179,15 @@ export function ChatArea({
     return () => clearTimeout(timeoutId);
   }, [newMessage, conversationId, setTyping]);
 
-  const handleSend = async (e: React.FormEvent) => {
+  const handleSend = async (e: React.FormEvent, retryContent?: string) => {
     e.preventDefault();
-    if (!newMessage.trim() || !conversationId) return;
+    if ((!newMessage.trim() && !retryContent) || !conversationId) return;
 
-    const content = newMessage.trim();
+    const content = retryContent ?? newMessage.trim();
     setIsSending(true);
     setError(null);
-    setNewMessage(""); // Optimistic clear
+    setUnsentMessage(null);
+    if (!retryContent) setNewMessage(""); // Only clear if not retry
 
     // Force scroll to bottom when sending a message
     setTimeout(() => {
@@ -159,6 +201,8 @@ export function ChatArea({
       await sendMessage({ conversationId, content });
     } catch (err: any) {
       setError(err?.message || "Failed to send message.");
+      setUnsentMessage(content);
+      setNewMessage(content); // Restore in input
     } finally {
       setIsSending(false);
     }
@@ -377,7 +421,16 @@ export function ChatArea({
           <div className="mb-2 flex items-center gap-2 text-red-600 bg-red-50 border border-red-200 rounded px-3 py-2">
             <AlertCircle className="h-4 w-4" />
             <span>{error}</span>
-            <button onClick={() => setError(null)} className="ml-auto text-xs text-red-500 underline">Dismiss</button>
+            {unsentMessage && (
+              <button
+                onClick={(e) => handleSend(e, unsentMessage)}
+                className="ml-2 text-xs text-red-700 underline"
+                disabled={isSending}
+              >
+                Retry
+              </button>
+            )}
+            <button onClick={() => { setError(null); setUnsentMessage(null); }} className="ml-auto text-xs text-red-500 underline">Dismiss</button>
           </div>
         )}
         <form onSubmit={handleSend} className="flex gap-2">
@@ -396,3 +449,4 @@ export function ChatArea({
     </div>
   );
 }
+// --- END STEP 6 ---

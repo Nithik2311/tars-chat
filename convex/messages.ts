@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+// --- STEP 7: Fetching & Sending Messages ---
 export const list = query({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
@@ -21,6 +22,7 @@ export const send = mutation({
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) throw new Error("Unauthorized");
     
+    
     await ctx.db.insert("messages", {
       conversationId: args.conversationId,
       senderId: identity.subject,
@@ -29,7 +31,9 @@ export const send = mutation({
     });
   }
 });
+// --- END STEP 7 ---
 
+// --- STEP 9: Read Receipts ---
 export const markAsRead = mutation({
   args: { conversationId: v.id("conversations") },
   handler: async (ctx, args) => {
@@ -47,7 +51,9 @@ export const markAsRead = mutation({
     }
   }
 });
+// --- END STEP 9 ---
 
+// --- STEP 11: Message Deletion (Soft Delete) ---
 export const deleteMessage = mutation({
   args: { 
     messageId: v.id("messages"),
@@ -75,7 +81,12 @@ export const deleteMessage = mutation({
     }
   }
 });
+// --- END STEP 11 ---
 
+// --- STEP 13: Message Reactions ---
+// Rule: One reaction per user per message.
+// - If user clicks a different emoji, their old reaction is removed and the new one is added.
+// - If user clicks the same emoji again, their reaction is removed (toggle off).
 export const toggleReaction = mutation({
   args: { messageId: v.id("messages"), emoji: v.string() },
   handler: async (ctx, args) => {
@@ -85,27 +96,37 @@ export const toggleReaction = mutation({
     const message = await ctx.db.get(args.messageId);
     if (!message) throw new Error("Message not found");
 
+    const userId = identity.subject;
     const reactions = message.reactions || [];
-    const existingReactionIndex = reactions.findIndex(r => r.emoji === args.emoji);
 
-    if (existingReactionIndex !== -1) {
-      const userIndex = reactions[existingReactionIndex].users.indexOf(identity.subject);
-      if (userIndex !== -1) {
-        // Remove user from reaction
-        reactions[existingReactionIndex].users.splice(userIndex, 1);
-        // If no users left, remove the reaction entirely
-        if (reactions[existingReactionIndex].users.length === 0) {
-          reactions.splice(existingReactionIndex, 1);
-        }
+    // Check if the user already has this exact emoji on this message
+    const alreadyHadThisEmoji = reactions.some(
+      (r) => r.emoji === args.emoji && r.users.includes(userId)
+    );
+
+    // First, remove the user from all existing reactions for this message
+    const cleanedReactions = reactions
+      .map((r) => ({
+        emoji: r.emoji,
+        users: r.users.filter((u) => u !== userId),
+      }))
+      .filter((r) => r.users.length > 0);
+
+    // If they clicked the same emoji again, we simply keep it removed (toggle off)
+    if (!alreadyHadThisEmoji) {
+      // User is switching / adding a new reaction
+      const idx = cleanedReactions.findIndex((r) => r.emoji === args.emoji);
+      if (idx !== -1) {
+        cleanedReactions[idx] = {
+          ...cleanedReactions[idx],
+          users: [...cleanedReactions[idx].users, userId],
+        };
       } else {
-        // Add user to existing reaction
-        reactions[existingReactionIndex].users.push(identity.subject);
+        cleanedReactions.push({ emoji: args.emoji, users: [userId] });
       }
-    } else {
-      // Add new reaction
-      reactions.push({ emoji: args.emoji, users: [identity.subject] });
     }
 
-    await ctx.db.patch(args.messageId, { reactions });
+    await ctx.db.patch(args.messageId, { reactions: cleanedReactions });
   }
 });
+// --- END STEP 13 ---

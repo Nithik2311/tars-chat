@@ -1,6 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
+// --- STEP 8: Typing Indicators ---
 export const setTyping = mutation({
   args: {
     conversationId: v.id("conversations"),
@@ -62,3 +63,4 @@ export const getTypingStatus = query({
     );
   },
 });
+// --- END STEP 8 ---
