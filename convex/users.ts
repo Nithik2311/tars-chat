@@ -7,7 +7,10 @@ export const getUsers = query({
   handler: async (ctx) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      throw new Error("Unauthorized");
+      // If the user isn't authenticated yet (e.g. during initial hydration),
+      // just return an empty list instead of throwing. The UI will show
+      // "No other users" until Clerk/Convex auth is ready.
+      return [];
     }
 
     const me = identity.subject;

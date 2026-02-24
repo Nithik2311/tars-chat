@@ -44,6 +44,7 @@ export function ChatArea({
   const { user: currentUser } = useUser();
   const [newMessage, setNewMessage] = useState("");
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [now, setNow] = useState(Date.now());
   
   // --- STEP 12: Loading & Error States (Optimistic UI) ---
   const [isSending, setIsSending] = useState(false);
@@ -55,6 +56,11 @@ export function ChatArea({
   const prevMessageCount = useRef(0);
   const lastConversationId = useRef<Id<"conversations"> | null>(null);
   
+  // Keep a live view of the other user's data (online status, avatar, etc.)
+  const users = useQuery(api.users.getUsers);
+  const liveOtherUser =
+    users?.find((u) => u.clerkId === otherUser?.clerkId) || otherUser;
+
   // --- STEP 7: Sending & Fetching Messages ---
   const messages = useQuery(
     api.messages.list, 
@@ -83,6 +89,12 @@ export function ChatArea({
   );
   const isOtherUserTyping = typingIndicators && typingIndicators.length > 0;
   // --- END STEP 8 ---
+
+  // Keep other user's online indicator fresh in the header
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 10000);
+    return () => clearInterval(id);
+  }, []);
 
   // --- STEP 10: Auto-Scrolling & New Message Alerts ---
   // Smart Auto-Scroll
@@ -221,6 +233,11 @@ export function ChatArea({
     );
   }
 
+  const isOtherOnline =
+    !!liveOtherUser &&
+    liveOtherUser.isOnline &&
+    now - liveOtherUser.lastSeen < 60000; // 60s threshold
+
   return (
     <div className={`flex-1 h-full flex-col bg-white relative ${className || "flex"}`}>
       {/* Header */}
@@ -232,20 +249,20 @@ export function ChatArea({
         )}
         <div className="relative">
           <Avatar className="h-10 w-10">
-            <AvatarImage src={otherUser.imageUrl} />
-            <AvatarFallback>{otherUser.name.charAt(0)}</AvatarFallback>
+            <AvatarImage src={liveOtherUser?.imageUrl} />
+            <AvatarFallback>{liveOtherUser?.name?.charAt(0)}</AvatarFallback>
           </Avatar>
-          {otherUser.isOnline && (
+          {isOtherOnline && (
             <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
           )}
         </div>
         <div>
-          <h2 className="font-bold">{otherUser.name}</h2>
+          <h2 className="font-bold">{liveOtherUser?.name}</h2>
           <p className="text-xs text-zinc-500">
             {isOtherUserTyping ? (
               <span className="text-blue-500 font-medium">typing...</span>
             ) : (
-              otherUser.isOnline ? "Online" : "Offline"
+              isOtherOnline ? "Online" : "Offline"
             )}
           </p>
         </div>
