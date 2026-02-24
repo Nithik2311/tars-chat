@@ -3,7 +3,7 @@
 import { UserButton } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "./ui/input";
 import { Search, Loader2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
@@ -21,6 +21,13 @@ export function Sidebar({
   const users = useQuery(api.users.getUsers);
   const getOrCreateConversation = useMutation(api.conversations.getOrCreate);
   const [searchQuery, setSearchQuery] = useState("");
+  const [now, setNow] = useState(Date.now());
+
+  // Re-evaluate online status every 10 seconds on the client
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 10000);
+    return () => clearInterval(id);
+  }, []);
 
   const filteredUsers = users?.filter((user) =>
     user.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -64,7 +71,10 @@ export function Sidebar({
               </p>
             </div>
           ) : (
-            filteredUsers?.map((user) => (
+            filteredUsers?.map((user) => {
+              const isOnline =
+                user.isOnline && now - user.lastSeen < 60000; // 60s threshold
+              return (
               <div
                 key={user._id}
                 onClick={() => handleUserClick(user)}
@@ -75,7 +85,7 @@ export function Sidebar({
                     <AvatarImage src={user.imageUrl} />
                     <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                   </Avatar>
-                  {user.isOnline && (
+                  {isOnline && (
                     <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
                   )}
                 </div>
@@ -97,7 +107,8 @@ export function Sidebar({
                   )}
                 </div>
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </ScrollArea>
